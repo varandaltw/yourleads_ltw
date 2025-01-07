@@ -1,0 +1,93 @@
+# OS generated files #
+######################
+.DS_Store
+*.swp
+
+# Python-related #
+##################
+*.pyc
+*.pyo
+*.pyd
+*.py,cover
+__pycache__/
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Environments #
+################
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.Python
+
+# Django-related #
+##################
+db.sqlite3
+db.sqlite3-journal
+*.log
+local_settings.py
+media/
+
+# Static files #
+###############
+staticfiles/
+
+# VSCode-related #
+##################
+.vscode/
+.history/
+
+# Build files #
+###############
+build/
+dist/
+*.egg-info/
+.installed.cfg
+*.egg
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+
+# PyInstaller #
+###############
+*.manifest
+*.spec
+
+# Installer logs #
+##################
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage #
+########################
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+
+# Jupyter Notebook #
+####################
+.ipynb_checkpoints
+
+# Other IDE-specific #
+######################
+.ropeproject
+.spyderproject
+.spyproject
+.idea/
