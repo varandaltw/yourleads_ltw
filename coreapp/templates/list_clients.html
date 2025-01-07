@@ -1,0 +1,37 @@
+<!-- list_clients.html -->
+{% extends "base.html" %}
+{% load static %}
+{% load custom_filters %}
+
+{% block title %}Clients{% endblock %}
+
+{% block page_specific_styles %}
+    <link rel="stylesheet" href="{% static 'css/components.css' %}">
+{% endblock %}
+
+{% block content %}
+<div id="clients-section">
+    <h2>Clients</h2>
+
+    {% if error %}
+        <p class="error">{{ error }}</p>
+    {% else %}
+        {% if clients %}
+            <div class="client-card-container">
+                {% for client in clients %}
+                    <a href="{% url 'view_client_reports' client.id %}" class="client-card">
+                        <h3>{{ client.get_full_name|default:client.username }}</h3>
+                        <p>Email: {{ client.email|default:"No email provided" }}</p>
+                    </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p>No clients found.</p>
+        {% endif %}
+    {% endif %}
+</div>
+{% endblock %}
+
+
+
+

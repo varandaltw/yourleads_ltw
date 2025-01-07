@@ -1,0 +1,72 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <link rel="stylesheet" type="text/css" href="{% static 'css/login.css' %}">
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-box">
+            <div class="logo">
+                <img src="{% static 'images/logo_branco.png' %}" alt="Logo">
+            </div>
+            <p>Log In to View your real-time Marketing Reports.</p>
+            <form id="login-form" method="POST" action="{% url 'login' %}">
+                {% csrf_token %}
+
+                <!-- Show non-field errors -->
+                {% if form.non_field_errors %}
+                    <div class="form-errors">
+                        {% for error in form.non_field_errors %}
+                            <p class="error">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <!-- Username Field -->
+                <div class="input-group">
+                    <img src="{% static 'images/icon_user.png' %}" alt="User Icon" class="input-icon">
+                    {{ form.username }}
+                    <!-- Display errors specific to the username field -->
+                    {% if form.username.errors %}
+                        <div class="field-errors">
+                            {% for error in form.username.errors %}
+                                <p class="error">{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Password Field -->
+                <div class="input-group">
+                    <img src="{% static 'images/icon_pass.png' %}" alt="Password Icon" class="input-icon">
+                    {{ form.password }}
+                    <!-- Display errors specific to the password field -->
+                    {% if form.password.errors %}
+                        <div class="field-errors">
+                            {% for error in form.password.errors %}
+                                <p class="error">{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" class="btn">Log In</button>
+
+                <!-- Django messages -->
+                {% if messages %}
+                    <div class="messages">
+                        {% for message in messages %}
+                            <p class="message-error">{{ message }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+</body>
+</html>

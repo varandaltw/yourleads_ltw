@@ -1,0 +1,28 @@
+<!-- pagination.html -->
+<div class="pagination">
+    <ul class="pagination-list">
+        {% if reports.has_previous %}
+            <li><a href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page=1">« First</a></li>
+            <li><a href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ reports.previous_page_number }}">‹ Previous</a></li>
+        {% else %}
+            <li class="disabled">« First</li>
+            <li class="disabled">‹ Previous</li>
+        {% endif %}
+
+        {% for num in reports.paginator.page_range %}
+            {% if reports.number == num %}
+                <li class="active"><span>{{ num }}</span></li>
+            {% elif num > reports.number|add:'-3' and num < reports.number|add:'3' %}
+                <li><a href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ num }}">{{ num }}</a></li>
+            {% endif %}
+        {% endfor %}
+
+        {% if reports.has_next %}
+            <li><a href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ reports.next_page_number }}">Next ›</a></li>
+            <li><a href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ reports.paginator.num_pages }}">Last »</a></li>
+        {% else %}
+            <li class="disabled">Next ›</li>
+            <li class="disabled">Last »</li>
+        {% endif %}
+    </ul>
+</div>
