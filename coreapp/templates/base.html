@@ -2,13 +2,16 @@
 <html lang="en">
 <head>
     {% load static %}
+    {% load compress %}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Your Page Title{% endblock %}</title>
 
+    {% compress css %}
     <!-- Default Styles -->
     <link rel="stylesheet" href="{% static 'css/base.css' %}">
     <link rel="stylesheet" href="{% static 'css/layout.css' %}">
+    {% endcompress %}
     <link rel="icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
 
     <!-- Page-Specific Styles -->

@@ -1,10 +1,14 @@
-# 
 from .base import *
+import sentry_sdk
+from sentry_sdk.integrations.django import DjangoIntegration
+
+# Debug to ensure settings are loaded correctly
+print(f"DEBUG (prod.py): DB_DATABASE={DATABASES['default']['NAME']}")
 
 DEBUG = False
 
 # Production-specific security settings
-SECRET_KEY = env('SECRET_KEY', default='Czm;:=t)`sA4Ygpxhd5LTk6')
+SECRET_KEY = env('SECRET_KEY')
 
 SECURE_HSTS_SECONDS = 31536000  # 1 year
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
@@ -19,27 +23,38 @@ X_FRAME_OPTIONS = 'DENY'
 
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['yourleads_ltw.com', 'www.yourleads_ltw.com'])
 
+# Content Security Policy
+CSP_DEFAULT_SRC = ["'self'"]  # Only allow resources from your own domain
+CSP_CONNECT_SRC = ["'self'", "https://hooks.zapier.com"] # API connections
+CSP_SCRIPT_SRC = ["'self'", "https://zapier.com"] # No external scripts unless explicitly required
+CSP_STYLE_SRC = ["'self'", "https://zapier.com"] # No external styles unless explicitly required
+CSP_REPORT_ONLY = True
+CSP_IMG_SRC = ["'self'", "data:"]  # Allow inline or data URIs if needed
+CSP_FONT_SRC = ["'self'"]
+CSP_FRAME_SRC = ["'self'"]  # No embedded frames unless explicitly required
+CSP_REPORT_URI = ["https://yourleads_ltw.com/csp-violations"]
+
+# Initialize Sentry for production
+sentry_sdk.init(
+    dsn=env('SENTRY_DSN'),
+    integrations=[DjangoIntegration()],
+    traces_sample_rate=1.0,
+    send_default_pii=True,
+)
+
 # Logging for production
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'error_file': {
-            'level': 'ERROR',
-            'class': 'logging.FileHandler',
-            'filename': os.path.join(BASE_DIR, 'logs', 'errors.log'),
-        },
-        'warning_file': {
-            'level': 'WARNING',
-            'class': 'logging.FileHandler',
-            'filename': os.path.join(BASE_DIR, 'logs', 'warnings.log'),
-        },
-    },
-    'loggers': {
-        'django': {
-            'handlers': ['file'],
-            'level': 'WARNING',
-            'propagate': True,
-        },
-    },
+LOGGING['loggers']['django']['handlers'] = ['console', 'error_file']
+LOGGING['loggers']['django']['level'] = 'ERROR'
+
+LOGGING['loggers']['custom_logger']['handlers'] = ['console', 'info_file']
+LOGGING['loggers']['custom_logger']['level'] = 'INFO'
+
+LOGGING['loggers']['webhook']['handlers'] = ['console', 'warning_file', 'error_file']
+LOGGING['loggers']['webhook']['level'] = 'WARNING'
+
+LOGGING['handlers']['sentry'] = {
+    'level': 'ERROR',
+    'class': 'sentry_sdk.integrations.logging.EventHandler',
 }
+LOGGING['loggers']['django']['handlers'].append('sentry')  # Add Sentry for error monitoring
+LOGGING['loggers']['webhook']['handlers'].append('sentry')

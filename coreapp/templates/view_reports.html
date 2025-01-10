@@ -5,10 +5,14 @@
 {% block title %}Reports{% endblock %}
 
 {% block page_specific_styles %}
+{% compress css %}
 <link rel="stylesheet" href="{% static 'css/flatpickr.min.css' %}">
-<script src="{% static 'js/flatpickr.min.js' %}"></script>
 <link rel="stylesheet" href="{% static 'css/page_reports.css' %}">
+{% endcompress %}
+{% compress js %}
+<script src="{% static 'js/flatpickr.min.js' %}"></script>
 <script src="{% static 'js/reports_table.js' %}"></script>
+{% endcompress %}
 {% endblock %}
 
 {% block content %}

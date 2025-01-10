@@ -2,11 +2,14 @@
 {% extends "base.html" %}
 {% load static %}
 {% load custom_filters %}
+{% load compress %}
 
 {% block title %}Clients{% endblock %}
 
 {% block page_specific_styles %}
+{% compress css %}
     <link rel="stylesheet" href="{% static 'css/components.css' %}">
+{% endcompress %}
 {% endblock %}
 
 {% block content %}

@@ -1,7 +1,9 @@
 from django.urls import path
 from . import views #dot for same folder
 from .views import CustomLoginView, CustomPasswordChangeView
-from django.contrib.auth.views import LogoutView,  PasswordChangeDoneView
+from django.contrib.auth.views import LogoutView
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     
@@ -17,4 +19,11 @@ urlpatterns = [
 
     # Integrations
     path("webhook/zapier/", views.zapier_webhook, name="zapier_webhook"),
+
+    # Monitoring
+    path('sentry-debug/', views.trigger_error, name="sentry_error"),
+
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -3,6 +3,12 @@ import json
 import logging
 import openpyxl
 
+from django_ratelimit.decorators import ratelimit
+from django.utils.decorators import method_decorator
+from django.dispatch import receiver
+from django.utils.timezone import now
+from django.contrib.auth.signals import user_login_failed
+
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.core.exceptions import ObjectDoesNotExist
 from django.http import HttpResponse, JsonResponse
@@ -22,6 +28,57 @@ from .forms import CustomPasswordChangeForm
 from coreapp.models import Report
 
 User = get_user_model()
+
+
+@receiver(user_login_failed)
+def log_failed_login(sender, credentials, request, **kwargs):
+    logger = logging.getLogger('django')
+    username = credentials.get('username', 'UNKNOWN')
+    ip = get_client_ip(request)
+    logger.warning(
+        f"Failed login attempt: username='{username}', IP='{ip}', time={now()}"
+    )
+
+def get_client_ip(request):
+    """Extract client IP from request headers."""
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        return x_forwarded_for.split(',')[0]
+    return request.META.get('REMOTE_ADDR')
+
+def is_team(user):
+    """Check if the user is a LTW team member."""
+    return user.groups.filter(name="Team").exists()
+
+def custom_serializer(obj):
+    """
+    Custom serializer to handle datetime and date objects for JSON export.
+    """
+    if isinstance(obj, datetime):
+        return obj.strftime('%Y-%m-%d %H:%M:%S')  # Format datetime as 'YYYY-MM-DD HH:MM:SS'
+    elif isinstance(obj, date):
+        return obj.strftime('%Y-%m-%d')  # Format date as 'YYYY-MM-DD'
+    raise TypeError(f"Type {type(obj)} not serializable")
+
+def trigger_error(request):
+    division_by_zero = 1 / 0
+
+
+@method_decorator(ratelimit(key='ip', rate='5/m', block=True), name='dispatch')
+class CustomLoginView(LoginView):
+    """
+    Custom login view with role-based redirection.
+    Redirects based on user roles:
+      - Superuser or team member -> list_clients
+      - Client -> view_client_reports
+    """
+    def get_success_url(self):
+        user = self.request.user  # Get the logged-in user
+        # Redirect superusers and team members to the clients list
+        if user.is_superuser or is_team(user):
+            return '/clients/'
+        # Redirect clients to their reports
+        return f'/reports/{user.id}/'
 
 
 def export_to_csv(reports, fields):
@@ -67,16 +124,6 @@ def export_to_excel(reports, fields):
     workbook.save(response)
     return response
 
-def custom_serializer(obj):
-    """
-    Custom serializer to handle datetime and date objects for JSON export.
-    """
-    if isinstance(obj, datetime):
-        return obj.strftime('%Y-%m-%d %H:%M:%S')  # Format datetime as 'YYYY-MM-DD HH:MM:SS'
-    elif isinstance(obj, date):
-        return obj.strftime('%Y-%m-%d')  # Format date as 'YYYY-MM-DD'
-    raise TypeError(f"Type {type(obj)} not serializable")
-
 
 def export_to_json(reports, fields):
     """
@@ -89,27 +136,6 @@ def export_to_json(reports, fields):
     response = JsonResponse(list(data), safe=False)  # Convert QuerySet to a list for JSON
     response['Content-Disposition'] = 'attachment; filename="reports.json"'
     return response
-
-
-def is_team(user):
-    """Check if the user is a LTW team member."""
-    return user.groups.filter(name="Team").exists()
-
-
-class CustomLoginView(LoginView):
-    """
-    Custom login view with role-based redirection.
-    Redirects based on user roles:
-      - Superuser or team member -> list_clients
-      - Client -> view_client_reports
-    """
-    def get_success_url(self):
-        user = self.request.user  # Get the logged-in user
-        # Redirect superusers and team members to the clients list
-        if user.is_superuser or is_team(user):
-            return '/clients/'
-        # Redirect clients to their reports
-        return f'/reports/{user.id}/'
 
 
 @login_required
@@ -262,8 +288,6 @@ def view_client_reports(request, client_id):
                 "query_params": {"field": None, "search_query": None}
             })
 
-
-
     # Pagination logic
     paginator = Paginator(reports, 9)  # Show 10 reports per page
     page = request.GET.get('page')
@@ -386,6 +410,7 @@ class CustomPasswordChangeView(PasswordChangeView):
         context = super().get_context_data(**kwargs)
         context["active_page"] = "change_password"
         return context
+
 
 # Get the webhook logger
 logger = logging.getLogger('webhook')

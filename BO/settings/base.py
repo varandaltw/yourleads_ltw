@@ -13,14 +13,12 @@ env = environ.Env(DEBUG=(bool, False))
 # Base directory of the project
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-
 # Define the .env file path
 env_path = os.path.join(BASE_DIR, '.env')
 if os.path.exists(env_path):
     environ.Env.read_env(env_path)
 else:
     raise FileNotFoundError(f".env file not found at {env_path}")
-
 
 # Installed apps
 INSTALLED_APPS = [
@@ -30,10 +28,24 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'coreapp',  # Your app
-    'debug_toolbar', # Debugging tool for development
+    'coreapp',  # My app
+    'csp',
+    'compressor',
 ]
 
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': 'redis://127.0.0.1:6379/1',
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        },
+        'TIMEOUT': 300,  # Default timeout in seconds
+    }
+}
+
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+SESSION_CACHE_ALIAS = "default"
 
 # Middleware
 MIDDLEWARE = [
@@ -44,10 +56,9 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'debug_toolbar.middleware.DebugToolbarMiddleware',
     'django.middleware.locale.LocaleMiddleware',
-    'csp.middleware.CSPMiddleware'
-
+    'csp.middleware.CSPMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
 ]
 
 
@@ -73,9 +84,8 @@ TEMPLATES = [
 ]
 
 
-# WSGI application
+# For the web to recognize
 WSGI_APPLICATION = 'BO.wsgi.application'
-
 
 # Secret key
 SECRET_KEY = env('SECRET_KEY', default='your_default_secret_key')
@@ -120,6 +130,16 @@ DATETIME_FORMAT = 'Y-m-d\TH:i:sP'
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+# WhiteNoise settings
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+STATICFILES_FINDERS = [
+    'django.contrib.staticfiles.finders.FileSystemFinder',
+    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
+    'compressor.finders.CompressorFinder',  
+]
+COMPRESS_ENABLED = True
+COMPRESS_OFFLINE = True  # Generate compressed files during collectstatic
 
 
 # Media files
@@ -131,33 +151,67 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
+# Ensure the logs directory exists
+LOG_DIR = os.path.join(BASE_DIR, 'logs')
+if not os.path.exists(LOG_DIR):
+    os.makedirs(LOG_DIR)
+
 # Logging configuration for both dev and production
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+        'error_file': {
+            'level': 'ERROR',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(LOG_DIR, 'errors.log'),
+            'formatter': 'verbose',
+        },
+        'warning_file': {
+            'level': 'WARNING',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(LOG_DIR, 'warnings.log'),
+            'formatter': 'verbose',
+        },
+        'info_file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(LOG_DIR, 'info.log'),
+            'formatter': 'verbose',
         },
     },
     'loggers': {
-        'webhook': {  # Custom logger for webhook view
-            'handlers': ['console'],
-            'level': 'DEBUG',  # Set to DEBUG to capture detailed logs
+        'django': {
+            'handlers': ['console'],  # Extend handlers in specific environments
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+        'custom_logger': {
+            'handlers': ['console'],  # Extend handlers in prod
+            'level': 'INFO',
             'propagate': False,
         },
-        'django': {
-            'handlers': ['console'],
-            'level': 'DEBUG',  # Logs all Django activity to console
+        'webhook': {
+            'handlers': ['console'],  # Extend handlers in prod
+            'level': 'DEBUG',
             'propagate': False,
         },
     },
 }
-
-
-
-
-
 
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
