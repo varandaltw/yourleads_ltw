@@ -15,9 +15,9 @@ class Report(models.Model):
     # General Fields
     id_ltw = models.PositiveIntegerField(null=True, blank=True, verbose_name="LTW ID") # User-specific report ID
     class LeadValidation(models.TextChoices):# Enum for Lead Type
-        VALID = 'Valid', 'Valid Lead'
-        FILTERED = 'Filtered', 'Filtered Lead'
-        DUPLICATED = 'Duplicated', 'Duplicated Lead'
+        VALID = 'Valid', 'Valid'
+        FILTERED = 'Filtered', 'Filtered'
+        DUPLICATED = 'Duplicated', 'Duplicated'
         FILTERED_DUPLICATED = 'Filtered,Duplicated', 'Filtered and Duplicated'
 
     lead_validation = models.CharField(

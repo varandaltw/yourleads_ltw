@@ -1,132 +1,129 @@
 {% extends "base_view_reports.html" %}
 {% load static %}
 {% load custom_filters %}
+{% load compress %}
 
 {% block title %}Reports{% endblock %}
 
 {% block page_specific_styles %}
-{% compress css %}
-<link rel="stylesheet" href="{% static 'css/flatpickr.min.css' %}">
-<link rel="stylesheet" href="{% static 'css/page_reports.css' %}">
-{% endcompress %}
-{% compress js %}
-<script src="{% static 'js/flatpickr.min.js' %}"></script>
-<script src="{% static 'js/reports_table.js' %}"></script>
-{% endcompress %}
+    {% compress css %}
+    <link rel="stylesheet" href="{% static 'css/flatpickr.min.css' %}">
+    <link rel="stylesheet" href="{% static 'css/page_reports.css' %}">
+    {% endcompress %}
+    {% compress js %}
+    <script src="{% static 'js/flatpickr.min.js' %}"></script>
+    <script src="{% static 'js/reports_table.js' %}"></script>
+    {% endcompress %}
 {% endblock %}
 
 {% block content %}
-<h2>Reports for {{ client.get_full_name|default:client.username }}</h2>
+    <h2>Reports for {{ client.get_full_name|default:client.username }}</h2>
 
-<!-- Active Filters -->
-{% if active_filters %}
-<div class="active-filters">
-    <p>Active Filters:</p>
-    <ul>
-        {% for filter in active_filters %}
-        <li>
-            {{ filter.name }}: {{ filter.value }}
-            <a href="?{% for key, val in request.GET.items %}{% if key not in filter.query_params %}{{ key }}={{ val }}&{% endif %}{% endfor %}">✕</a>
-        </li>
-        {% endfor %}
-    </ul>    
-    <a href="{% url 'view_client_reports' client.id %}" class="clear-filters-button">Clear All Filters</a>
-</div>
-{% endif %}
-
-
-
-<!-- Download Button -->
-<div class="dropdown-container">
-    <button class="download-button">Download ▼</button>
-    <div class="download-dropdown-content">
-        <a href="{% url 'export_reports' 'csv' %}?client_id={{ client.id }}&fields={{ fields|join:',' }}{% for key, value in request.GET.items %}&{{ key }}={{ value }}{% endfor %}">
-            Export as CSV
-        </a>
-        <a href="{% url 'export_reports' 'excel' %}?client_id={{ client.id }}&fields={{ fields|join:',' }}{% for key, value in request.GET.items %}&{{ key }}={{ value }}{% endfor %}">
-            Export as Excel
-        </a>
-        <a href="{% url 'export_reports' 'json' %}?client_id={{ client.id }}&fields={{ fields|join:',' }}{% for key, value in request.GET.items %}&{{ key }}={{ value }}{% endfor %}">
-            Export as JSON
-        </a>
+    <!-- Active Filters -->
+    {% if active_filters %}
+    <div class="active-filters">
+        <p>Active Filters:</p>
+        <ul>
+            {% for filter in active_filters %}
+            <li>
+                {{ filter.name }}: {{ filter.value }}
+                <a href="?{% for key, val in request.GET.items %}{% if key not in filter.query_params %}{{ key }}={{ val }}&{% endif %}{% endfor %}">✕</a>
+            </li>
+            {% endfor %}
+        </ul>    
+        <a href="{% url 'view_client_reports' client.id %}" class="clear-filters-button">Clear All Filters</a>
     </div>
-</div>
+    {% endif %}
 
+    <!-- Download Button -->
+    <div class="dropdown-container">
+        <button class="download-button">Download ▼</button>
+        <div class="download-dropdown-content">
+            <a href="{% url 'export_reports' 'csv' %}?client_id={{ client.id }}&fields={{ fields|join:',' }}{% for key, value in request.GET.items %}&{{ key }}={{ value }}{% endfor %}">
+                Export as CSV
+            </a>
+            <a href="{% url 'export_reports' 'excel' %}?client_id={{ client.id }}&fields={{ fields|join:',' }}{% for key, value in request.GET.items %}&{{ key }}={{ value }}{% endfor %}">
+                Export as Excel
+            </a>
+            <a href="{% url 'export_reports' 'json' %}?client_id={{ client.id }}&fields={{ fields|join:',' }}{% for key, value in request.GET.items %}&{{ key }}={{ value }}{% endfor %}">
+                Export as JSON
+            </a>
+        </div>
+    </div>
 
-
-
-<!-- Reports Table -->
-{% if reports %}
-<div class="report-table-container">
-    <table class="report-table">
-        <thead>
-            <tr>
-                {% for field in fields %}
-                <th>
-                    <div class="header-with-dropdown" data-field="{{ field }}">
-                        {{ model|verbose_name:field }}
-                        <div class="sort-dropdown">
-                            <button class="sort-button">▼</button>
-                            <div class="sort-options">
-                                <a href="?sort_field={{ field }}&sort_order=asc">Order Up</a>
-                                <a href="?sort_field={{ field }}&sort_order=desc">Order Down</a>
-                                {% if field in date_fields %}
-                                <a href="#" class="filter-by-date" data-field="{{ field }}">Filter by Date</a>
-                                {% else %}
-                                <div class="dropdown-search">
-                                    <form method="get">
-                                        {% for key, value in request.GET.items %}
-                                            {% if key != "search_query" %}
-                                                <input type="hidden" name="{{ key }}" value="{{ value }}">
-                                            {% endif %}
-                                        {% endfor %}
-                                        <input type="hidden" name="field" value="{{ field }}">  
-                                        <input 
-                                            type="text" 
-                                            class="dropdown-search-input" 
-                                            placeholder="Search {{ model|verbose_name:field }}" 
-                                            name="search_query" 
-                                            value="{{ request.GET.search_query|default:'' }}"  
-                                        />
-                                        <button class="dropdown-search-button" type="submit">🔍</button>
-                                    </form>
+    <!-- Reports Table -->
+    {% if reports %}
+    <div class="report-table-container">
+        <table class="report-table">
+            <thead>
+                <tr>
+                    {% for field in fields %}
+                    <th>
+                        <div class="header-with-dropdown" data-field="{{ field }}">
+                            {{ model|verbose_name:field }}
+                            <div class="sort-dropdown">
+                                <button class="sort-button">▼</button>
+                                <div class="sort-options">
+                                    <a href="?sort_field={{ field }}&sort_order=asc">Order Up</a>
+                                    <a href="?sort_field={{ field }}&sort_order=desc">Order Down</a>
+                                    {% if field in date_fields %}
+                                    <a href="#" class="filter-by-date" data-field="{{ field }}">Filter by Date</a>
+                                    {% else %}
+                                    <div class="dropdown-search">
+                                        <form method="get">
+                                            {% for key, value in request.GET.items %}
+                                                {% if key != "search_query" %}
+                                                    <input type="hidden" name="{{ key }}" value="{{ value }}">
+                                                {% endif %}
+                                            {% endfor %}
+                                            <input type="hidden" name="field" value="{{ field }}">  
+                                            <input 
+                                                type="text" 
+                                                class="dropdown-search-input" 
+                                                placeholder="Search {{ model|verbose_name:field }}" 
+                                                name="search_query" 
+                                                value="{{ request.GET.search_query|default:'' }}"  
+                                            />
+                                            <button class="dropdown-search-button" type="submit">🔍</button>
+                                        </form>
+                                    </div>
+                                    {% endif %}
                                 </div>
-                                {% endif %}
                             </div>
                         </div>
-                    </div>
-                </th>
-                {% endfor %}
-            </tr>
-        </thead>
-        <tbody>
-            {% for report in reports %}
-            <tr>
-                {% for field in fields %}
-                <td data-field="{{ field }}">
-                    {% if field in date_fields %}
-                        {% if field == "bday" %}
-                            {{ report|getattr_safe:field|date:"d-M-Y"|default:"-" }}
+                    </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for report in reports %}
+                <tr>
+                    {% for field in fields %}
+                    <td data-field="{{ field }}">
+                        {% if field in date_fields %}
+                            {% if field == "bday" %}
+                                {{ report|getattr_safe:field|date:"d-M-Y"|default:"-" }}
+                            {% else %}
+                                {{ report|getattr_safe:field|date:"d-M-Y H:i:s"|default:"-" }}
+                            {% endif %}
+                        {% elif field == "lead_validation" %}
+                            {{ report.get_lead_validation_display }}
                         {% else %}
-                            {{ report|getattr_safe:field|date:"d-M-Y H:i:s"|default:"-" }}
+                            {{ report|getattr_safe:field|default:"-" }}
                         {% endif %}
-                    {% elif field == "lead_validation" %}
-                        {{ report.get_lead_validation_display }}
-                    {% else %}
-                        {{ report|getattr_safe:field|default:"-" }}
-                    {% endif %}
-                </td>
+                    </td>
+                    {% endfor %}
+                </tr>
                 {% endfor %}
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
+            </tbody>
+        </table>
+    </div>
+
     <!-- Include Pagination -->
     {% block pagination %}
-    {% include 'partials/pagination.html' %}
+        {% include 'partials/pagination.html' %}
     {% endblock %}
-{% else %}
+    {% else %}
     <p>No reports found for {{ client.get_full_name|default:client.username }}.</p>
-{% endif %}
+    {% endif %}
 {% endblock %}

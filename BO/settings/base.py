@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
+    'django_extensions',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
@@ -227,3 +228,17 @@ EMAIL_USE_SSL = False  # Leave False if EMAIL_USE_TLS is True
 EMAIL_HOST_USER = env('EMAIL_HOST_USER')  # Your email address
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD') # Your email password
 DEFAULT_FROM_EMAIL = env('EMAIL_HOST_USER')
+
+# Content Security Policy
+CSP_DEFAULT_SRC = ["'self'"]
+CSP_SCRIPT_SRC = ["'self'", "https://zapier.com"]  # Allow only Zapier and self-hosted scripts
+CSP_STYLE_SRC = ["'self'", "https://zapier.com"]  # Allow only Zapier and self-hosted styles
+CSP_IMG_SRC = ["'self'", "data:"]
+CSP_FONT_SRC = ["'self'"]
+CSP_CONNECT_SRC = ["'self'", "https://hooks.zapier.com"]
+CSP_FRAME_SRC = ["'none'"]  # Disallow all embedded frames
+CSP_REPORT_URI = ["/csp-violations/"]  # Endpoint to collect CSP violation reports
+CSP_REPORT_ONLY = True  # Enable reporting without enforcing (set to `False` in production)
+
+# CSP middleware for violation reporting (assumes a view at `/csp-violations/`)
+MIDDLEWARE.append('csp.middleware.CSPMiddleware')

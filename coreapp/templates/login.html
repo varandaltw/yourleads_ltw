@@ -13,10 +13,15 @@
 <body>
     <div class="login-container">
         <div class="login-box">
+            <!-- Logo Section -->
             <div class="logo">
                 <img src="{% static 'images/logo_branco.png' %}" alt="Logo">
             </div>
+
+            <!-- Informational Text -->
             <p>Log In to View your real-time Marketing Reports.</p>
+
+             <!-- Login Form -->
             <form id="login-form" method="POST" action="{% url 'login' %}">
                 {% csrf_token %}
 
@@ -27,6 +32,15 @@
                             <p class="error">{{ error }}</p>
                         {% endfor %}
                     </div>
+                {% endif %}
+
+                <!-- Display Django Messages (e.g., rate-limit messages) -->
+                {% if messages %}
+                <ul class="messages">
+                    {% for message in messages %}
+                        <li class="{{ message.tags }}">{{ message }}</li>
+                    {% endfor %}
+                </ul>
                 {% endif %}
 
                 <!-- Username Field -->
@@ -60,14 +74,6 @@
                 <!-- Submit Button -->
                 <button type="submit" class="btn">Log In</button>
 
-                <!-- Django messages -->
-                {% if messages %}
-                    <div class="messages">
-                        {% for message in messages %}
-                            <p class="message-error">{{ message }}</p>
-                        {% endfor %}
-                    </div>
-                {% endif %}
             </form>
         </div>
     </div>

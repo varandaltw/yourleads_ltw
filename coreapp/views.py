@@ -3,6 +3,7 @@ import json
 import logging
 import openpyxl
 
+from django.core.cache import cache
 from django_ratelimit.decorators import ratelimit
 from django.utils.decorators import method_decorator
 from django.dispatch import receiver
@@ -24,12 +25,19 @@ from django.core.paginator import Paginator
 from django.urls import reverse_lazy
 
 from datetime import date, datetime, timedelta
+
+import sentry_sdk
 from .forms import CustomPasswordChangeForm
 from coreapp.models import Report
 
+from sentry_sdk import capture_message, capture_exception, set_context, set_user  # Sentry integration
+
+# Logger setup for login-related events
+logger = logging.getLogger('login')
+
 User = get_user_model()
 
-
+#*******************************************************************HELPER FUNCTIONS *****************************************************
 @receiver(user_login_failed)
 def log_failed_login(sender, credentials, request, **kwargs):
     logger = logging.getLogger('django')
@@ -39,8 +47,9 @@ def log_failed_login(sender, credentials, request, **kwargs):
         f"Failed login attempt: username='{username}', IP='{ip}', time={now()}"
     )
 
+# Helper Function to Extract Client IP
 def get_client_ip(request):
-    """Extract client IP from request headers."""
+    """Extract client IP address from request headers."""
     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
     if x_forwarded_for:
         return x_forwarded_for.split(',')[0]
@@ -61,24 +70,120 @@ def custom_serializer(obj):
     raise TypeError(f"Type {type(obj)} not serializable")
 
 def trigger_error(request):
-    division_by_zero = 1 / 0
+    set_user({
+        "id": 123,
+        "email": "user@example.com",
+        "username": "testuser",
+    })
+
+    # Add custom context
+    set_context("order_details", {
+        "order_id": 456,
+        "status": "pending",
+    })
+
+    # Add tags
+    sentry_sdk.set_tag("feature", "checkout")
+    sentry_sdk.set_tag("priority", "high")
+
+    # Trigger an error
+    capture_message("Test error with tags and context")
+    raise Exception("Triggered error for testing Sentry.")
 
 
-@method_decorator(ratelimit(key='ip', rate='5/m', block=True), name='dispatch')
+# Custom Rate Limiter Function
+def custom_rate_limiter(ip, username=None, limit=5, period=60, block_duration=300):
+    """
+    Custom rate limiter function to limit login attempts per IP or username.
+    - Tracks attempts in a sliding window of `period` seconds.
+    - Allows up to `limit` attempts within the window.
+    - Dynamically blocks IPs for `block_duration` seconds after repeated offenses.
+    """
+    # Blocked IP cache key
+    block_key = f"blocked_ip:{ip}"
+    if cache.get(block_key):
+        logger.warning(f"IP {ip} is temporarily blocked.")
+        return True  # Block requests from this IP
+
+    # Track login attempts cache key
+    attempt_key = f"login_attempts:{ip}"
+    if username:
+        attempt_key += f":{username}"
+
+    # Get recent attempts
+    attempts = cache.get(attempt_key, [])
+    current_time = now()
+
+    # Keep attempts within the sliding window
+    recent_attempts = [ts for ts in attempts if (current_time - ts).seconds < period]
+    recent_attempts.append(current_time)  # Add current attempt
+
+    # Update cache with recent attempts
+    cache.set(attempt_key, recent_attempts, timeout=period)
+
+    # If rate limit exceeded, block the IP
+    if len(recent_attempts) > limit:
+        logger.warning(f"Rate limit exceeded for IP={ip}, Username={username}")
+        cache.set(block_key, True, timeout=block_duration)  # Temporarily block this IP
+        capture_message(f"IP {ip} temporarily blocked for repeated offenses.")  # Log to Sentry
+        return True
+
+    return False  # Allow login attempt
+
+def some_view(request):
+    # Set user information
+    if request.user.is_authenticated:
+        set_user({
+            "id": request.user.id,
+            "email": request.user.email,
+            "username": request.user.username,
+        })
+    else:
+        set_user(None)  # Anonymous user
+
+    # Add custom context
+    set_context("request_metadata", {
+        "ip_address": get_client_ip(request),
+        "user_agent": request.META.get("HTTP_USER_AGENT"),
+    })
+    return HttpResponse("View executed!")
+
+# ********************************************************************* HELPER FUNCTIONS *************************************************************
+
+
+@method_decorator(ratelimit(key='ip', rate='5/m', block=False), name='dispatch')
 class CustomLoginView(LoginView):
     """
-    Custom login view with role-based redirection.
-    Redirects based on user roles:
-      - Superuser or team member -> list_clients
-      - Client -> view_client_reports
+    Custom login view with rate limiting, logging, and Sentry integration.
     """
+    def dispatch(self, request, *args, **kwargs):
+        ip = get_client_ip(request)
+        username = request.POST.get('username', None)
+
+        is_rate_limited = custom_rate_limiter(ip, username=username, limit=5, period=60, block_duration=300)
+        if is_rate_limited:
+            # Gracefully handle cache failures
+            # Log the event
+            logger.warning(f"Blocked login attempt: IP={ip}, Username={username}")
+            capture_message(f"Rate limit triggered: IP={ip}, Username={username}")
+            logger.error(f"Rate limiter cache failure: {e}")
+            capture_exception(e)  # Log to Sentry
+
+            is_rate_limited = False  # Allow login if cache fails
+
+            # Add an error message to the request
+            messages.error(request, "You have exceeded the allowed number of requests. Please try again later.")
+
+            # Re-render the login page with the message
+            return super().get(request, *args, **kwargs)
+
+        return super().dispatch(request, *args, **kwargs)
+
     def get_success_url(self):
         user = self.request.user  # Get the logged-in user
-        # Redirect superusers and team members to the clients list
-        if user.is_superuser or is_team(user):
+        if user.is_superuser or is_team(user):  # Redirect superusers and team members
             return '/clients/'
-        # Redirect clients to their reports
-        return f'/reports/{user.id}/'
+        return f'/reports/{user.id}/'  # Redirect clients to their reports
 
 
 def export_to_csv(reports, fields):
